@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import osr
 from pyproj import Proj
+import sys
+import os
 
 # navsat: lat, lon, alt
 # g2o: x,y,z
@@ -25,15 +27,12 @@ def generate_g2o_xyz(filedir_g2o, filedir_utm):
     for line in file_g2o:
         try:
             data_type, id, x, y, z, qx, qy, qz, qw = line.split()
-
             if int(id) == 0:
                 g2o_array = np.array(
                     [[float(x)+float(lat), float(y)+float(lon), float(z)]])
-
             else:
                 g2o_array = np.append(
                     g2o_array, [[float(x)+float(lat), float(y)+float(lon), float(z)]], axis=0)
-
         except:
             try:
                 data_type, id = line.split()
@@ -96,9 +95,15 @@ def generate_GNSS_xyz(filedir):
     return gnss_array
 
 
-# def calc_dist_xyz():
+def calc_dist_xyz(g2o_array, gnss_array, dim):
     # eucledian dist between g2o and GNSS
     # ausgehend von g2o, da deutlich weniger Punkte
+    #a = 0
+    if dim == 2:
+        a = 0
+
+    elif dim == 3:
+        print("Error: Currently only 2D is fully supported")
 
 
 def plot_msgs(g2o_array, gnss_array, dim):
@@ -117,27 +122,52 @@ def plot_msgs(g2o_array, gnss_array, dim):
         ax.legend(loc="upper left")
 
         ax.set_aspect('equal')
-
     elif dim == 3:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(g2o_x, g2o_y, g2o_z)
         # ax.set_zlim3d([0, 10])
+    else:
+        print("Error: Wrong dimension! Value must be '2' or '3'")
 
     plt.show()
+    # plt.savefig('figure.png')
 
 
 if __name__ == "__main__":
-    g2o_xyz = generate_g2o_xyz(
-        "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/graph.g2o", "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/zero_utm")
-    gnss_xyz = generate_GNSS_xyz(
-        "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/2022-02-03-16-41-53_gps_navsat.txt")
-    plot_msgs(g2o_xyz, gnss_xyz, 2)
 
-# todo: lla to utm scheint fehlerhaft:
-#       - Vergleiche ersten Eintrag aus Transformation mit zero_utm Koordinaten
-#       - stimmen die Formeln?
+    # file_path = [
+    #    "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/graph.g2o",
+    #    "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/zero_utm",
+    #    "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/2022-02-03-16-41-53_gps_navsat.txt"]
+    # print(file_path[0])
+    #g2o_xyz = generate_g2o_xyz(str(file_path[0]), str(file_path[1]))
+    #gnss_xyz = generate_GNSS_xyz(str(file_path[2]))
+    #plot_msgs(g2o_xyz, gnss_xyz, 2)
+    # plt.show()
+    # plt.savefig('figure.png')
+
+    file_path = []
+    for k in range(1, 4):
+        if os.path.isabs(sys.argv[k]):
+            file_path.append(str(sys.argv[k]))
+        else:
+            file_path.append(str(os.path.join(os.path.abspath(
+                os.path.dirname(__file__)), sys.argv[k])))
+
+    g2o_xyz = generate_g2o_xyz(str(file_path[0]), str(file_path[1]))
+    gnss_xyz = generate_GNSS_xyz(str(file_path[2]))
+    plot_msgs(g2o_xyz, gnss_xyz, int(sys.argv[4]))
+
+    #calc_dist_xyz(g2o_xyz, gnss_xyz, int(sys.argv[4]))
+
 # todo: auf g2o muss auf jedes x,y,z die zero_utm addiert werden für die globale Referenz
 # todo: delta distanz berechnen:
 #       - 2D oder 3D (?)
 #       - euclidean (?)
+
+# args:
+# "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/graph.g2o"
+# "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/zero_utm"
+# "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/2022-02-03-16-41-53_gps_navsat.txt"
+# 2
