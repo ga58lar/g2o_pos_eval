@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from cProfile import label
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,9 +14,6 @@ import os
 
 # navsat: lat, lon, alt
 # g2o: x,y,z
-
-# lidarslam_ros2: nav_msgs/Path
-# hdl_graph_slam: /hdl_graph_slam/markers
 
 
 def generate_g2o_xyz(filedir_g2o, filedir_utm):
@@ -97,16 +95,14 @@ def generate_GNSS_xyz(filedir):
     return gnss_array
 
 
-def calc_dist_xyz(g2o_array, gnss_array, dim):
+def calc_dist_xyz(g2o_array, gnss_array):
     # eucledian dist between g2o and GNSS
     dist_min = np.array([0])
-    if dim == 2:
-        for k in range(len(g2o_array)):
-            g2o_marker = g2o_array[k, :]
-            dist = np.sqrt(np.sum((gnss_array-g2o_marker)**2, axis=1))
-            dist_min = np.append(dist_min, min(dist))
-    elif dim == 3:
-        print("Error: Currently only 2D is fully supported")
+
+    for k in range(len(g2o_array)):
+        g2o_marker = g2o_array[k, :]
+        dist = np.sqrt(np.sum((gnss_array-g2o_marker)**2, axis=1))
+        dist_min = np.append(dist_min, min(dist))
 
     dist_min = np.delete(dist_min, 0, 0)
 
@@ -124,10 +120,20 @@ def plot_msgs(g2o_array, gnss_array, dist_min, dim):
     gnss_z = gnss_array[:, 2]
 
     if dim == 2:
-        fig, ax = plt.subplots(1, 1, sharex=True, sharey=True)
-        #ax.scatter(g2o_x, g2o_y, label="g2o")
-        #ax.plot(g2o_x, g2o_y, label="g2o")
-        #ax.plot(gnss_x, gnss_y, label="gnss")
+        fig, ax = plt.subplots(1, 2, sharex=True, sharey=True)
+        #ax[0].plot(g2o_x, g2o_y, label="g2o")
+        ax[0].plot(gnss_x, gnss_y, 'y', label="gnss", linewidth=1)
+        ax[0].scatter(g2o_x, g2o_y, s=15, label="g2o")
+
+        dg2o_x = 0.05*(g2o_x.max()-g2o_x.min())
+        dg2o_y = 0.05*(g2o_y.max()-g2o_y.min())
+
+        ax[0].set_xlim(g2o_x.min()-dg2o_x, g2o_x.max()+dg2o_x)
+        ax[0].set_ylim(g2o_y.min()-dg2o_y, g2o_y.max()+dg2o_y)
+        ax[0].set_xlabel('UTM easting')
+        ax[0].set_ylabel('UTM northing')
+        ax[0].legend(loc="upper left")
+        ax[0].set_aspect('equal')
 
         points = np.array([g2o_x, g2o_y]).T.reshape(-1, 1, 2)
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -135,17 +141,15 @@ def plot_msgs(g2o_array, gnss_array, dist_min, dim):
         lc = LineCollection(segments, cmap='viridis', norm=norm)
         lc.set_array(dist_min)
         # lc.set_linewidth(2)
-        line = ax.add_collection(lc)
-        fig.colorbar(line, ax=ax)
+        line = ax[1].add_collection(lc)
+        fig.colorbar(line, ax=ax[1])
 
-        dg2o_x = 0.05*(g2o_x.max()-g2o_x.min())
-        dg2o_y = 0.05*(g2o_y.max()-g2o_y.min())
-        ax.set_xlim(g2o_x.min()-dg2o_x, g2o_x.max()+dg2o_x)
-        ax.set_ylim(g2o_y.min()-dg2o_y, g2o_y.max()+dg2o_y)
+        ax[1].set_xlim(g2o_x.min()-dg2o_x, g2o_x.max()+dg2o_x)
+        ax[1].set_ylim(g2o_y.min()-dg2o_y, g2o_y.max()+dg2o_y)
+        ax[1].set_xlabel('UTM easting')
+        ax[1].set_ylabel('UTM northing')
+        ax[1].set_aspect('equal')
 
-        #ax.legend(loc="upper left")
-
-        ax.set_aspect('equal')
     elif dim == 3:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -154,23 +158,11 @@ def plot_msgs(g2o_array, gnss_array, dist_min, dim):
     else:
         print("Error: Wrong dimension! Value must be '2' or '3'")
 
-    plt.show()
     # plt.savefig('figure.png')
+    plt.show()
 
 
 if __name__ == "__main__":
-
-    # file_path = [
-    #    "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/graph.g2o",
-    #    "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/zero_utm",
-    #    "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/2022-02-03-16-41-53_gps_navsat.txt"]
-    # print(file_path[0])
-    #g2o_xyz = generate_g2o_xyz(str(file_path[0]), str(file_path[1]))
-    #gnss_xyz = generate_GNSS_xyz(str(file_path[2]))
-    #plot_msgs(g2o_xyz, gnss_xyz, 2)
-    # plt.show()
-    # plt.savefig('figure.png')
-
     file_path = []
     for k in range(1, 4):
         if os.path.isabs(sys.argv[k]):
@@ -181,17 +173,5 @@ if __name__ == "__main__":
 
     g2o_xyz = generate_g2o_xyz(str(file_path[0]), str(file_path[1]))
     gnss_xyz = generate_GNSS_xyz(str(file_path[2]))
-    dist_min = calc_dist_xyz(g2o_xyz, gnss_xyz, int(sys.argv[4]))
+    dist_min = calc_dist_xyz(g2o_xyz, gnss_xyz)
     plot_msgs(g2o_xyz, gnss_xyz, dist_min, int(sys.argv[4]))
-
-
-# todo: auf g2o muss auf jedes x,y,z die zero_utm addiert werden für die globale Referenz
-# todo: delta distanz berechnen:
-#       - 2D oder 3D (?)
-#       - euclidean (?)
-
-# args:
-# "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/graph.g2o"
-# "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/zero_utm"
-# "/home/kulmer/Documents/MasterThesis/OtherSoftware/g2o_pos_eval/data/2022-02-03-16-41-53_gps_navsat.txt"
-# 2
