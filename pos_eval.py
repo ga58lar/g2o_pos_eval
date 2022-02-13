@@ -3,6 +3,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+from matplotlib.colors import ListedColormap, BoundaryNorm
 from mpl_toolkits.mplot3d import Axes3D
 import osr
 from pyproj import Proj
@@ -29,10 +31,10 @@ def generate_g2o_xyz(filedir_g2o, filedir_utm):
             data_type, id, x, y, z, qx, qy, qz, qw = line.split()
             if int(id) == 0:
                 g2o_array = np.array(
-                    [[float(x)+float(lat), float(y)+float(lon), float(z)]])
+                    [[float(x)+float(lat), float(y)+float(lon), float(z)+float(alt)]])
             else:
                 g2o_array = np.append(
-                    g2o_array, [[float(x)+float(lat), float(y)+float(lon), float(z)]], axis=0)
+                    g2o_array, [[float(x)+float(lat), float(y)+float(lon), float(z)+float(alt)]], axis=0)
         except:
             try:
                 data_type, id = line.split()
@@ -97,16 +99,22 @@ def generate_GNSS_xyz(filedir):
 
 def calc_dist_xyz(g2o_array, gnss_array, dim):
     # eucledian dist between g2o and GNSS
-    # ausgehend von g2o, da deutlich weniger Punkte
-    #a = 0
+    dist_min = np.array([0])
     if dim == 2:
-        a = 0
-
+        for k in range(len(g2o_array)):
+            g2o_marker = g2o_array[k, :]
+            dist = np.sqrt(np.sum((gnss_array-g2o_marker)**2, axis=1))
+            dist_min = np.append(dist_min, min(dist))
     elif dim == 3:
         print("Error: Currently only 2D is fully supported")
 
+    dist_min = np.delete(dist_min, 0, 0)
 
-def plot_msgs(g2o_array, gnss_array, dim):
+    print(max(dist_min))
+    return dist_min
+
+
+def plot_msgs(g2o_array, gnss_array, dist_min, dim):
     g2o_x = g2o_array[:, 0]
     g2o_y = g2o_array[:, 1]
     g2o_z = g2o_array[:, 2]
@@ -116,10 +124,26 @@ def plot_msgs(g2o_array, gnss_array, dim):
     gnss_z = gnss_array[:, 2]
 
     if dim == 2:
-        fig, ax = plt.subplots()
-        ax.plot(g2o_x, g2o_y, label="g2o")
-        ax.plot(gnss_x, gnss_y, label="gnss")
-        ax.legend(loc="upper left")
+        fig, ax = plt.subplots(1, 1, sharex=True, sharey=True)
+        #ax.scatter(g2o_x, g2o_y, label="g2o")
+        #ax.plot(g2o_x, g2o_y, label="g2o")
+        #ax.plot(gnss_x, gnss_y, label="gnss")
+
+        points = np.array([g2o_x, g2o_y]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        norm = plt.Normalize(dist_min.min(), dist_min.max())
+        lc = LineCollection(segments, cmap='viridis', norm=norm)
+        lc.set_array(dist_min)
+        # lc.set_linewidth(2)
+        line = ax.add_collection(lc)
+        fig.colorbar(line, ax=ax)
+
+        dg2o_x = 0.05*(g2o_x.max()-g2o_x.min())
+        dg2o_y = 0.05*(g2o_y.max()-g2o_y.min())
+        ax.set_xlim(g2o_x.min()-dg2o_x, g2o_x.max()+dg2o_x)
+        ax.set_ylim(g2o_y.min()-dg2o_y, g2o_y.max()+dg2o_y)
+
+        #ax.legend(loc="upper left")
 
         ax.set_aspect('equal')
     elif dim == 3:
@@ -157,9 +181,9 @@ if __name__ == "__main__":
 
     g2o_xyz = generate_g2o_xyz(str(file_path[0]), str(file_path[1]))
     gnss_xyz = generate_GNSS_xyz(str(file_path[2]))
-    plot_msgs(g2o_xyz, gnss_xyz, int(sys.argv[4]))
+    dist_min = calc_dist_xyz(g2o_xyz, gnss_xyz, int(sys.argv[4]))
+    plot_msgs(g2o_xyz, gnss_xyz, dist_min, int(sys.argv[4]))
 
-    #calc_dist_xyz(g2o_xyz, gnss_xyz, int(sys.argv[4]))
 
 # todo: auf g2o muss auf jedes x,y,z die zero_utm addiert werden für die globale Referenz
 # todo: delta distanz berechnen:
