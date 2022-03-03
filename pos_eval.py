@@ -123,6 +123,7 @@ def plot_msgs(g2o_array, gnss_array, dist_min, dim):
         fig, ax = plt.subplots(1, 2, sharex=True, sharey=True)
         #ax[0].plot(g2o_x, g2o_y, label="g2o")
         ax[0].plot(gnss_x, gnss_y, 'y', label="gnss", linewidth=1)
+        #ax[0].scatter(gnss_x, gnss_y, s=1, label="gnss")
         ax[0].scatter(g2o_x, g2o_y, s=15, label="g2o")
 
         dgnss_x = 0.05*(gnss_x.max()-gnss_x.min())
