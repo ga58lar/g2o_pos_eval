@@ -125,11 +125,11 @@ def plot_msgs(g2o_array, gnss_array, dist_min, dim):
         ax[0].plot(gnss_x, gnss_y, 'y', label="gnss", linewidth=1)
         ax[0].scatter(g2o_x, g2o_y, s=15, label="g2o")
 
-        dg2o_x = 0.05*(g2o_x.max()-g2o_x.min())
-        dg2o_y = 0.05*(g2o_y.max()-g2o_y.min())
+        dgnss_x = 0.05*(gnss_x.max()-gnss_x.min())
+        dgnss_y = 0.05*(gnss_y.max()-gnss_y.min())
 
-        ax[0].set_xlim(g2o_x.min()-dg2o_x, g2o_x.max()+dg2o_x)
-        ax[0].set_ylim(g2o_y.min()-dg2o_y, g2o_y.max()+dg2o_y)
+        ax[0].set_xlim(gnss_x.min()-dgnss_x, gnss_x.max()+dgnss_x)
+        ax[0].set_ylim(gnss_y.min()-dgnss_y, gnss_y.max()+dgnss_y)
         ax[0].set_xlabel('UTM easting')
         ax[0].set_ylabel('UTM northing')
         ax[0].legend(loc="upper left")
@@ -144,8 +144,8 @@ def plot_msgs(g2o_array, gnss_array, dist_min, dim):
         line = ax[1].add_collection(lc)
         fig.colorbar(line, ax=ax[1])
 
-        ax[1].set_xlim(g2o_x.min()-dg2o_x, g2o_x.max()+dg2o_x)
-        ax[1].set_ylim(g2o_y.min()-dg2o_y, g2o_y.max()+dg2o_y)
+        ax[1].set_xlim(gnss_x.min()-dgnss_x, gnss_x.max()+dgnss_x)
+        ax[1].set_ylim(gnss_y.min()-dgnss_y, gnss_y.max()+dgnss_y)
         ax[1].set_xlabel('UTM easting')
         ax[1].set_ylabel('UTM northing')
         ax[1].set_aspect('equal')
